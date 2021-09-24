@@ -11,8 +11,7 @@ export PATH="${PATH}:/opt/VirtualGL/bin:/opt/TurboVNC/bin:/opt/tomcat/bin"
 
 sudo /etc/init.d/ssh start
 sudo /etc/init.d/dbus start
-sudo /etc/NX/nxserver --startup
-sudo tail -f /usr/NX/var/log/nxserver.log
+
 pulseaudio --start
 
 mkdir -p ~/.vnc
@@ -29,7 +28,8 @@ done
 
 export TVNC_WM=mate-session
 /opt/TurboVNC/bin/vncserver :0 -geometry "${SIZEW}x${SIZEH}" -depth "$CDEPTH" -dpi 96 -vgl -alwaysshared -noreset &
-
+sudo /etc/NX/nxserver --startup
+sudo tail -f /usr/NX/var/log/nxserver.log
 # mkdir -p ~/.guacamole
 # echo "<user-mapping>
 #     <authorize username=\"user\" password=\"$PASSWD\">
@@ -63,4 +63,4 @@ export TVNC_WM=mate-session
 # guacd -b 0.0.0.0 -f &
 
 # echo "Session Running. Press [Return] to exit."
-read
+#read
