@@ -1,4 +1,7 @@
-FROM nvidia/opengl:1.2-glvnd-runtime-ubuntu20.04
+# FROM nvidia/opengl:1.2-glvnd-runtime-ubuntu20.04
+ARG  CUDAGL_VERSION=11.0-devel-ubuntu20.04
+FROM  nvidia/cudagl:$CUDAGL_VERSION
+
 # Comment the line above and uncomment the line below for Ubuntu 18.04
 #FROM nvidia/opengl:1.2-glvnd-runtime-ubuntu18.04
 
@@ -45,6 +48,8 @@ RUN apt-get update && apt-get install -y \
         python-numpy \
         python3 \
         python3-numpy \
+        openssh-server \
+        openssh-sftp-server \
         mlocate \
         nano \
         vim \
@@ -72,16 +77,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     }\n\
 }" > /etc/vulkan/icd.d/nvidia_icd.json
 
+
+## Install nomachine
+RUN curl -fSL "https://www.nomachine.com/free/linux/64/deb" -o nomachine.deb &&\
+    dpkg -i nomachine.deb &&\
+    rm nomachine.deb &&\
+    sed -i "s|#EnableClipboard both|EnableClipboard both |g" /usr/NX/etc/server.cfg &&\
+    sed -i '/DefaultDesktopCommand/c\DefaultDesktopCommand "/usr/bin/mate-session"' /usr/NX/etc/node.cfg
+
+
 # Wine and Winetricks, comment out the below lines to disable
-ARG WINE_BRANCH=stable
-RUN if [ "$(grep VERSION_CODENAME= /etc/os-release | cut -d= -f2)" = "bionic" ]; then add-apt-repository ppa:cybermax-dexter/sdl2-backport; fi && \
-    curl -fsSL https://dl.winehq.org/wine-builds/winehq.key | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=1 apt-key add - && \
-    apt-add-repository "deb https://dl.winehq.org/wine-builds/ubuntu/ $(grep VERSION_CODENAME= /etc/os-release | cut -d= -f2) main" && \
-    apt-get update && apt-get install -y --install-recommends winehq-${WINE_BRANCH} && \
-    rm -rf /var/lib/apt/lists/* && \
-    curl -fsSL -o /usr/bin/winetricks https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks && \
-    chmod 755 /usr/bin/winetricks && \
-    curl -fsSL -o /usr/share/bash-completion/completions/winetricks https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks.bash-completion
+# ARG WINE_BRANCH=stable
+# RUN if [ "$(grep VERSION_CODENAME= /etc/os-release | cut -d= -f2)" = "bionic" ]; then add-apt-repository ppa:cybermax-dexter/sdl2-backport; fi && \
+#     curl -fsSL https://dl.winehq.org/wine-builds/winehq.key | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=1 apt-key add - && \
+#     apt-add-repository "deb https://dl.winehq.org/wine-builds/ubuntu/ $(grep VERSION_CODENAME= /etc/os-release | cut -d= -f2) main" && \
+#     apt-get update && apt-get install -y --install-recommends winehq-${WINE_BRANCH} && \
+#     rm -rf /var/lib/apt/lists/* && \
+#     curl -fsSL -o /usr/bin/winetricks https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks && \
+#     chmod 755 /usr/bin/winetricks && \
+#     curl -fsSL -o /usr/share/bash-completion/completions/winetricks https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks.bash-completion
 
 # VirtualGL and TurboVNC
 ARG VIRTUALGL_VERSION=2.6.90
@@ -107,55 +121,61 @@ no-pam-sessions\n\
 permitted-security-types = VNC, otp\
 " > /etc/turbovncserver-security.conf
 
-# Apache Guacamole
-ENV TOMCAT_VERSION 9.0.50
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libcairo2-dev \
-    libjpeg-turbo8-dev \
-    libpng-dev \
-    libtool-bin \
-    libossp-uuid-dev \
-    libavcodec-dev \
-    libavformat-dev \
-    libavutil-dev \
-    libswscale-dev \
-    freerdp2-dev \
-    libpango1.0-dev \
-    libssh2-1-dev \
-    libtelnet-dev \
-    libvncserver-dev \
-    libwebsockets-dev \
-    libpulse-dev \
-    libssl-dev \
-    libvorbis-dev \
-    libwebp-dev \
-    autoconf \
-    automake \
-    autotools-dev \
-    pulseaudio \
-    pavucontrol \
-    openssh-server \
-    openssh-sftp-server \
-    default-jdk \
-    maven && \
-    rm -rf /var/lib/apt/lists/* && \
-    curl -fsSL https://archive.apache.org/dist/tomcat/tomcat-$(echo $TOMCAT_VERSION | cut -d "." -f 1)/v${TOMCAT_VERSION}/bin/apache-tomcat-${TOMCAT_VERSION}.tar.gz | tar -xzf - -C /opt && \
-    mv /opt/apache-tomcat-$TOMCAT_VERSION /opt/tomcat && \
-    git clone https://github.com/apache/guacamole-server.git /tmp/guacamole-server && \
-    cd /tmp/guacamole-server && autoreconf -fi && ./configure --with-init-dir=/etc/init.d && make install && ldconfig && cd / && rm -rf /tmp/* && \
-    git clone https://github.com/apache/guacamole-client.git /tmp/guacamole-client && \
-    cd /tmp/guacamole-client && JAVA_HOME=/usr/lib/jvm/default-java mvn package && rm -rf /opt/tomcat/webapps/* && mv guacamole/target/guacamole*.war /opt/tomcat/webapps/ROOT.war && chmod +x /opt/tomcat/webapps/ROOT.war && cd / && rm -rf /tmp/* && \
-    echo "load-module module-native-protocol-tcp auth-ip-acl=127.0.0.0/8 auth-anonymous=1" >> /etc/pulse/default.pa
+# ssh 
+RUN mkdir /var/run/sshd &&  \
+    sed -i 's/#*PermitRootLogin prohibit-password/PermitRootLogin yes/g' /etc/ssh/sshd_config && \
+    sed -i 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' /etc/pam.d/sshd
+
+# # Apache Guacamole
+# ENV TOMCAT_VERSION 9.0.50
+# RUN apt-get update && apt-get install -y --no-install-recommends \
+#     libcairo2-dev \
+#     libjpeg-turbo8-dev \
+#     libpng-dev \
+#     libtool-bin \
+#     libossp-uuid-dev \
+#     libavcodec-dev \
+#     libavformat-dev \
+#     libavutil-dev \
+#     libswscale-dev \
+#     freerdp2-dev \
+#     libpango1.0-dev \
+#     libssh2-1-dev \
+#     libtelnet-dev \
+#     libvncserver-dev \
+#     libwebsockets-dev \
+#     libpulse-dev \
+#     libssl-dev \
+#     libvorbis-dev \
+#     libwebp-dev \
+#     autoconf \
+#     automake \
+#     autotools-dev \
+#     pulseaudio \
+#     pavucontrol \
+#     openssh-server \
+#     openssh-sftp-server \
+#     default-jdk \
+#     maven && \
+#     rm -rf /var/lib/apt/lists/* && \
+#     curl -fsSL https://archive.apache.org/dist/tomcat/tomcat-$(echo $TOMCAT_VERSION | cut -d "." -f 1)/v${TOMCAT_VERSION}/bin/apache-tomcat-${TOMCAT_VERSION}.tar.gz | tar -xzf - -C /opt && \
+#     mv /opt/apache-tomcat-$TOMCAT_VERSION /opt/tomcat && \
+#     git clone https://github.com/apache/guacamole-server.git /tmp/guacamole-server && \
+#     cd /tmp/guacamole-server && autoreconf -fi && ./configure --with-init-dir=/etc/init.d && make install && ldconfig && cd / && rm -rf /tmp/* && \
+#     git clone https://github.com/apache/guacamole-client.git /tmp/guacamole-client && \
+#     cd /tmp/guacamole-client && JAVA_HOME=/usr/lib/jvm/default-java mvn package && rm -rf /opt/tomcat/webapps/* && mv guacamole/target/guacamole*.war /opt/tomcat/webapps/ROOT.war && chmod +x /opt/tomcat/webapps/ROOT.war && cd / && rm -rf /tmp/* && \
+#     echo "load-module module-native-protocol-tcp auth-ip-acl=127.0.0.0/8 auth-anonymous=1" >> /etc/pulse/default.pa
 
 # Create user with password ${PASSWD}
 RUN apt-get update && apt-get install -y --no-install-recommends \
         sudo && \
     rm -rf /var/lib/apt/lists/* && \
-    groupadd -g 1000 user && \
-    useradd -ms /bin/bash user -u 1000 -g 1000 && \
+    groupadd -g 1008 user && \
+    useradd -ms /bin/bash user -u 1008 -g 1008 && \
     usermod -a -G adm,audio,cdrom,dialout,dip,fax,floppy,input,lp,lpadmin,netdev,plugdev,scanner,ssh,sudo,tape,tty,video,voice user && \
     echo "user ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
-    chown -R user:user /home/user /opt/tomcat && \
+    # chown -R user:user /home/user /opt/tomcat && \
+    chown -R user:user /home/user && \
     echo "user:${PASSWD}" | chpasswd && \
     ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime && echo "$TZ" > /etc/timezone
 
@@ -164,7 +184,9 @@ RUN chmod 755 /etc/entrypoint.sh
 COPY supervisord.conf /etc/supervisord.conf
 RUN chmod 755 /etc/supervisord.conf
 
+EXPOSE 22
 EXPOSE 8080
+EXPOSE 4000
 
 USER user
 WORKDIR /home/user
