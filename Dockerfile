@@ -5,7 +5,7 @@ FROM  nvidia/cudagl:$CUDAGL_VERSION
 # Comment the line above and uncomment the line below for Ubuntu 18.04
 #FROM nvidia/opengl:1.2-glvnd-runtime-ubuntu18.04
 
-LABEL maintainer "https://github.com/ehfd"
+# LABEL maintainer "https://github.com/ehfd"
 
 # Make all NVIDIA GPUs visible
 ARG NVIDIA_VISIBLE_DEVICES=all
@@ -15,7 +15,7 @@ ENV NVIDIA_DRIVER_CAPABILITIES all
 
 # Default options (password is "mypasswd")
 ENV TZ UTC
-ENV PASSWD mypasswd
+ENV PASSWD liulab
 ENV SIZEW 1920
 ENV SIZEH 1080
 ENV CDEPTH 24
@@ -170,14 +170,14 @@ RUN mkdir /var/run/sshd &&  \
 RUN apt-get update && apt-get install -y --no-install-recommends \
         sudo && \
     rm -rf /var/lib/apt/lists/* && \
-    groupadd -g 1008 user && \
-    useradd -ms /bin/bash user -u 1008 -g 1008 && \
-    usermod -a -G adm,audio,cdrom,dialout,dip,fax,floppy,input,lp,lpadmin,netdev,plugdev,scanner,ssh,sudo,tape,tty,video,voice user && \
-    echo "user ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
-    # chown -R user:user /home/user /opt/tomcat && \
-    chown -R user:user /home/user && \
-    echo "user:${PASSWD}" | chpasswd && \
-    ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime && echo "$TZ" > /etc/timezone
+    groupadd -g 1008 liulab && \
+    useradd -ms /bin/bash liulab -u 1008 -g 1008 && \
+    usermod -a -G adm,audio,cdrom,dialout,dip,fax,floppy,input,lp,lpadmin,netdev,plugdev,scanner,ssh,sudo,tape,tty,video,voice liulab && \
+    echo "liulab ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
+    chown -R liulab:liulab /home/liulab && \
+    echo "liulab:${PASSWD}" | chpasswd && \
+    ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime && echo "$TZ" > /etc/timezone && \
+    cp /root/.bashrc /home/liulab
 
 COPY entrypoint.sh /etc/entrypoint.sh
 RUN chmod 755 /etc/entrypoint.sh
@@ -188,7 +188,7 @@ EXPOSE 22
 EXPOSE 8080
 EXPOSE 4000
 
-USER user
-WORKDIR /home/user
+USER liulab
+WORKDIR /home/liulab
 
 ENTRYPOINT ["/usr/bin/supervisord"]
