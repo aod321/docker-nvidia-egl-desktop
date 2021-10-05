@@ -180,6 +180,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     cp /root/.bashrc /home/liulab
 
 COPY entrypoint.sh /etc/entrypoint.sh
+COPY install_conda.sh /home/liulab/
+COPY change2tuna_mirror.sh /home/liulab/
+RUN chmod +x /home/liulab/install_conda.sh
+RUN chmod +x /home/liulab/change2tuna_mirror.sh
 RUN chmod 755 /etc/entrypoint.sh
 COPY supervisord.conf /etc/supervisord.conf
 RUN chmod 755 /etc/supervisord.conf

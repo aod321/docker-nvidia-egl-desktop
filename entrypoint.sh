@@ -6,9 +6,18 @@ trap "echo TRAPed signal" HUP INT QUIT KILL TERM
 sudo chown -R liulab:liulab /home/liulab
 echo "liulab:$PASSWD" | sudo chpasswd
 sudo ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime && echo "$TZ" | sudo tee /etc/timezone > /dev/null
-export PATH="${PATH}:/opt/VirtualGL/bin:/opt/TurboVNC/bin:/opt/tomcat/bin"
+export PATH="${PATH}:/opt/VirtualGL/bin:/opt/TurboVNC/bin:/opt/tomcat/bin:/share/matlab/R2021a/bin"
+echo "alias docker=docker -H tcp://192.168.40.31:2376"
+echo "
+# Get the aliases and functions
+if [ -f ~/.bashrc ]; then
+        . ~/.bashrc
+fi
 
-echo "source $HOME/.bashrc" > /home/liulab/.bash_profile
+# User specific environment and startup programs
+
+PATH=$PATH:$HOME/bin
+export PATH" > $HOME/liulab/.bash_profile
 sudo /etc/init.d/ssh start
 sudo /etc/init.d/dbus start
 
@@ -30,16 +39,6 @@ export TVNC_WM=mate-session
 /opt/TurboVNC/bin/vncserver :0 -geometry "${SIZEW}x${SIZEH}" -depth "$CDEPTH" -dpi 96 -vgl -alwaysshared -noreset &
 sudo /etc/NX/nxserver --startup
 sudo tail -f /usr/NX/var/log/nxserver.log
-echo "
-# Get the aliases and functions
-if [ -f ~/.bashrc ]; then
-        . ~/.bashrc
-fi
-
-# User specific environment and startup programs
-
-PATH=$PATH:$HOME/bin
-export PATH" > $HOME/liulab/.bash_profile
 # mkdir -p ~/.guacamole
 # echo "<user-mapping>
 #     <authorize username=\"user\" password=\"$PASSWD\">
